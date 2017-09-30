@@ -7,4 +7,4 @@ This is a project where , we take the idea from the paper “ Summary Cache: A S
 
 To show how a bloom filter helps in reducing network usage, We would setup experiment where a local host will query a number of objects to its local proxy. We would take three caches and compare the gathered matrices. Case 1 is where the local proxy relay the request to the default gateway (internet) if there is a miss in the local proxy. Case 2 is where the local proxy queries all other proxies in case of a cache miss. Case 3 is where the local proxy first queries the local summary bloom filters. Then it queries only those proxies which got a hit in the summary bloom filters. In case of a false positive it queries the default gateway. In case of a miss in bloom filter, it queries the internet. 
 
-
+![ScreenShot](https://github.com/Pankajchandan/summaryCache/blob/master/image.png)
