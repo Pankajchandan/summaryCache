@@ -1,0 +1,17 @@
+(dp0
+S'127.0.0.1'
+p1
+(lp2
+cbitarray
+bitarray
+p3
+(S'\x06\xd4\xc0'
+p4
+S'big'
+p5
+tp6
+Rp7
+(dp8
+baF10.0
+aF7.0
+as.
