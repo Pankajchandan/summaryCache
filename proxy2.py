@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[6]:
+# In[1]:
 
 
 import BaseHTTPServer
@@ -16,39 +16,35 @@ from lib import check_filter_list
 import requests
 
 
-# In[7]:
+# In[2]:
 
 
 def load_backup(filename):
-    print "loading summary cache from backup file: ",filename
+    #print "loading summary cache from backup file: ",filename
     with open(filename, 'r') as save:
          return pickle.loads(save.read())
 
 
-# In[8]:
+# In[3]:
 
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
-    def __init__(self):
-        self.sentflag = 0
-        self.falsepositive = 0
-        
     # Handle a GET request.
     def do_GET(self):
         try:
             ## figure out cache folder name
             cache_name = self.path.split("/")[2]
             
-            # Figure out what exactly is being requested. This is the full path where file should exist
+            ## Figure out what exactly is being requested. This is the full path where file should exist
             full_path = os.getcwd()+"/cache/"+cache_name+"/"+"index.html"
             
-            # It doesn't exist...i.e not in the localcache
+            ## It doesn't exist...i.e not in the localcache
             if not os.path.exists(full_path):
                 print "not found in local cache"
                 raise ServerException("'{0}' not found".format(self.path))
                 
-            # ...if the file exists in cache
+            ## ...if the file exists in cache
             elif os.path.isfile(full_path):
                 self.handle_file(full_path)
             
@@ -93,24 +89,9 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
-        
-    def request_proxy(proxy, cache_name):
-        proxies = {
-          'http': 'http://'+proxy+':8080',
-          'https': 'http://'+proxy+':8080',
-        }
-        response = requests.get(self.path,proxies=proxies)
-        if response.status_code == "404":
-            self.falsepositive = self.falsepositive+1
-            print "false positive from ",proxy
-        else:
-            self.send_content(response.text)
-            print "content sent to client...."
-            self.sendflag = 1
-        
 
 
-# In[9]:
+# In[4]:
 
 
 # Run local tcp sever at port 9000
@@ -138,14 +119,14 @@ def add_filter(connection, client_address):
         
 
 
-# In[10]:
+# In[5]:
 
 
 if __name__ == '__main__':
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_address = ('localhost', 9000)
+        server_address = ('', 9000)
         sock.bind(server_address)
         sock.listen(1)
         print "port opened at 9000"
@@ -165,12 +146,6 @@ if __name__ == '__main__':
         print "http server terminated..."
         server.socket.close()
         pass
-
-
-# In[48]:
-
-
-load_backup("backup.txt")
 
 
 # In[ ]:
