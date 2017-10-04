@@ -1,4 +1,3 @@
-
 import mmh3
 import os
 from bitarray import bitarray
@@ -72,11 +71,11 @@ def send_filter_details(bit_array, size, no_of_hashes):
     index_list = [bit_array, size, no_of_hashes]
     ## serialize the object into string using pickle
     index_list_srl = pickle.dumps(index_list)
-    ## Create a TCP/IP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ## Connect the socket to the port where the server is listening
     print "sending own summary to all the proxies online"
     for item in proxy_list:
+        ## Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = (item, 9000)
         print ('connecting to %s port %s' % server_address)
         try:
@@ -84,6 +83,9 @@ def send_filter_details(bit_array, size, no_of_hashes):
             sock.sendall(index_list_srl.encode('utf-8'))
             sock.close()
             print "sent own summary to: ",item
-        except socket.error:
+        except socket.error as msg:
             print "proxy offline: ",item
+            print msg
+        ##close the socket
+        sock.close()
 
