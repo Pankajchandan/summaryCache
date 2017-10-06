@@ -8,12 +8,11 @@ import BaseHTTPServer
 import os
 import socket
 from threading import Thread
-from multiprocessing import Process, Manager
 import sys
 import pickle
 from bitarray import bitarray
 from lib import check_filter_list
-import requests
+import time
 
 
 # In[2]:
@@ -21,8 +20,8 @@ import requests
 
 def load_backup(filename):
     #print "loading summary cache from backup file: ",filename
-    with open(filename, 'r') as save:
-         return pickle.loads(save.read())
+    with open(filename, 'rb') as save:
+         return pickle.load(save)
 
 
 # In[3]:
@@ -95,61 +94,100 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 # Run local tcp sever at port 9000
-def run_port(sock):
-    print "listening to TCP connections at port 9000......\n"
+def run_port(sock,filter_dict):
+    global close_port
+    print "listening to TCP connections on port 9000......\n"
     while True:
         connection, client_address = sock.accept()
-        print "connection from: ", client_address
+        if close_port == 1:
+            print "close_port = 1; port terminated on 9000...\n"
+            sock.close()
+            break
+        print "connection from: ", client_address, "\n"
         thread_add_filter = Thread(target = add_filter, args = (connection, client_address))
         thread_add_filter.start()
+        thread_add_filter.join()
+        
+# method to terminate port
+def port_close():
+    global close_port
+    close_port = 1
+    sock_close = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ('localhost', 9000)
+    sock_close.connect(server_address)
     
 # method to add filters to dictionary
 def add_filter(connection, client_address):
-    filter_dict = {}
-    data = connection.recv(4096)
-    index_list = data.decode('utf-8') 
-    index_data  = pickle.loads(index_list)
-    if os.path.isfile("backup.txt"):
-            filter_dict = load_backup("backup.txt")
+    global filter_dict
+    data = connection.recv(8192)
+    index_list = data.decode('utf-8')
+    index_data = pickle.loads(index_list)
     filter_dict[client_address[0]] = index_data
     connection.close()
-    print filter_dict
-    with open('backup.txt', 'w') as save:
-            save.write(pickle.dumps(filter_dict))
-        
 
 
 # In[5]:
 
 
-if __name__ == '__main__':
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_address = ('', 9000)
-        sock.bind(server_address)
-        sock.listen(1)
-        print "port opened at 9000"
-        ## spawn a new process to listen in a loop
-        process_run_port = Process(target = run_port, args = (sock,))
-        process_run_port.start()
-        print "running http server on port 8080\n "
-        serverAddress = ('', 8080)
-        server = BaseHTTPServer.HTTPServer(serverAddress, RequestHandler)
-        server.serve_forever()
+##method to run servers
+def run_servers():
+    
+    global filter_dict
+    global server
+    global sock
+    
+    print "initial filterdict has: ", filter_dict,"\n"
         
+    ##check backup file
+    if os.path.isfile("backup.pickle"):
+        print "initializing history....\n"
+        filter_dict = load_backup("backup.pickle")
+        print "history: ",filter_dict,"\n"
+        
+    ##run tcp server
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_address = ('', 9000)
+    sock.bind(server_address)
+    sock.listen(5)
+    print "port opened on 9000...\n"
+        
+    ##spawn a new thread to listen in a loop
+    thread_run_port = Thread(target = run_port, args = (sock,filter_dict))
+    thread_run_port.start()
+        
+    ##run http server
+    print "running http server on port 8080...\n "
+    server.serve_forever()
+
+
+# In[6]:
+
+
+if __name__ == '__main__':
+    
+    ##declare filter dictionary
+    filter_dict =  {}
+    
+    ##declare flag for closing port
+    close_port = 0
+    
+    ##initialize tcp server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    ##initialize http server
+    serverAddress = ('', 8080)
+    server = BaseHTTPServer.HTTPServer(serverAddress, RequestHandler)
+    
+    try:
+        run_servers()
+    
+    ##handle exceptions
     except KeyboardInterrupt:
-        process_run_port.terminate()
-        sock.close()
-        process_run_port.terminate()
-        print "port terminated at 9000...\n"
-        print "http server terminated..."
+        print "writing to file backup.pickle : ", filter_dict, "\n"
+        print "saving filter before terminating...\n"
+        with open("backup.pickle", 'wb') as save:
+            pickle.dump(filter_dict,save)
         server.socket.close()
-        pass
-
-
-# In[ ]:
-
-
-
+        print "http server terminated...\n"
+        port_close()
 

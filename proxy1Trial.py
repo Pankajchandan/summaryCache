@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[12]:
 
 
 import BaseHTTPServer
@@ -15,7 +15,7 @@ from lib import check_filter_list
 import time
 
 
-# In[2]:
+# In[13]:
 
 
 def load_backup(filename):
@@ -24,7 +24,7 @@ def load_backup(filename):
          return pickle.load(save)
 
 
-# In[3]:
+# In[14]:
 
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -124,18 +124,31 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             return 1
 
 
-# In[4]:
+# In[15]:
 
 
 # Run local tcp sever at port 9000
 def run_port(sock,filter_dict):
-    print "listening to TCP connections at port 9000......\n"
+    global close_port
+    print "listening to TCP connections on port 9000......\n"
     while True:
         connection, client_address = sock.accept()
+        if close_port == 1:
+            print "close_port = 1; port terminated on 9000...\n"
+            sock.close()
+            break
         print "connection from: ", client_address, "\n"
         thread_add_filter = Thread(target = add_filter, args = (connection, client_address))
         thread_add_filter.start()
         thread_add_filter.join()
+        
+# method to terminate port
+def port_close():
+    global close_port
+    close_port = 1
+    sock_close = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ('localhost', 9000)
+    sock_close.connect(server_address)
     
 # method to add filters to dictionary
 def add_filter(connection, client_address):
@@ -147,9 +160,10 @@ def add_filter(connection, client_address):
     connection.close()
 
 
-# In[5]:
+# In[16]:
 
 
+##method to run servers
 def run_servers():
     
     global filter_dict
@@ -180,13 +194,16 @@ def run_servers():
     server.serve_forever()
 
 
-# In[6]:
+# In[17]:
 
 
 if __name__ == '__main__':
     
     ##declare filter dictionary
     filter_dict =  {}
+    
+    ##declare flag for closing port
+    close_port = 0
     
     ##initialize tcp server
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -204,21 +221,7 @@ if __name__ == '__main__':
         print "saving filter before terminating...\n"
         with open("backup.pickle", 'wb') as save:
             pickle.dump(filter_dict,save)
-        sock.close()
         server.socket.close()
-        print "port terminated at 9000...\n"
         print "http server terminated...\n"
-        pass
-
-
-# In[10]:
-
-
-sock.close()
-
-
-# In[ ]:
-
-
-
+        port_close()
 
