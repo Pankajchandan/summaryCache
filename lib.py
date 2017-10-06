@@ -22,7 +22,7 @@ def make_filter(list_param, size, no_of_hashes):
     return bit_array
 
 
-## method to check if thing is present in bloom filter , bit_array = bloom filter, 
+## method to check if object is present in bloom filter , bit_array = bloom filter, 
 ## size = size of filter(no of bits), no_of_hashes = no of hashes, url = object to check
 def check_filter(bit_array, size, no_of_hashes, url):
     bit_list = []
@@ -30,7 +30,7 @@ def check_filter(bit_array, size, no_of_hashes, url):
     for i in range(int(no_of_hashes)):
         bit_list.append(mmh3.hash(url, hash_num+i) % size)
     for bit in bit_list:
-        if bit_array[bit] == False:
+        if bit_array[int(bit)] == False:
             return False
     return True
 

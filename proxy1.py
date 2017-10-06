@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[12]:
 
 
 import BaseHTTPServer
@@ -13,9 +13,10 @@ import pickle
 from bitarray import bitarray
 from lib import check_filter_list
 import time
+import requests
 
 
-# In[2]:
+# In[13]:
 
 
 def load_backup(filename):
@@ -24,27 +25,44 @@ def load_backup(filename):
          return pickle.load(save)
 
 
-# In[3]:
+# In[14]:
 
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    
+        
     # Handle a GET request.
     def do_GET(self):
+        global filter_dict
         try:
+            sentflag = 0
+            falsepositive = 0
             ## figure out cache folder name
             cache_name = self.path.split("/")[2]
             
-            ## Figure out what exactly is being requested. This is the full path where file should exist
+            # Figure out what exactly is being requested. This is the full path where file should exist
             full_path = os.getcwd()+"/cache/"+cache_name+"/"+"index.html"
             
-            ## It doesn't exist...i.e not in the localcache
+            # It doesn't exist...i.e not in the localcache
             if not os.path.exists(full_path):
-                print "not found in local cache"
-                raise ServerException("'{0}' not found".format(self.path))
+                print "resource not found in local cache...\n"
+                print "checking summary caches...\n"
+                proxy_true_list = check_filter_list(filter_dict, cache_name)
                 
-            ## ...if the file exists in cache
+                if len(proxy_true_list) is 0:
+                    print "no hits found in summary cache...\nsending request to default gateway...\n"
+                    content = "serving from internet"
+                    self.send_content(content)
+                else:
+                    for proxy in proxy_true_list:
+                        if sentflag ==1:
+                            sentflag = 0
+                            break
+                        else:
+                            sentflag = sentflag + self.request_proxy(proxy,cache_name)
+                
+            # ...if the file exists in cache
             elif os.path.isfile(full_path):
+                print "resource found in local cache...\n"
                 self.handle_file(full_path)
             
             # ...it's something we don't handle.
@@ -88,9 +106,25 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+        
+    def request_proxy(self, proxy, cache_name):
+        proxies = {
+          'http': 'http://'+proxy+':8080',
+          'https': 'http://'+proxy+':8080',
+        }
+        response = requests.get(self.path,proxies=proxies)
+        if response.status_code == "404":
+            falsepositive = falsepositive+1
+            print "false positive from ",proxy, "\n"
+            return 0
+        else:
+            print "status code: ", response.status_code
+            self.send_content(response.text.encode('utf-8'))
+            print "content sent to client....\n"
+            return 1
 
 
-# In[4]:
+# In[15]:
 
 
 # Run local tcp sever at port 9000
@@ -126,7 +160,7 @@ def add_filter(connection, client_address):
     connection.close()
 
 
-# In[5]:
+# In[16]:
 
 
 ##method to run servers
@@ -135,14 +169,12 @@ def run_servers():
     global filter_dict
     global server
     global sock
-    
-    print "initial filterdict has: ", filter_dict,"\n"
         
     ##check backup file
     if os.path.isfile("backup.pickle"):
-        print "initializing history....\n"
+        print "loading filters from backup....\n"
         filter_dict = load_backup("backup.pickle")
-        print "history: ",filter_dict,"\n"
+        print "backup contents: ",filter_dict,"\n"
         
     ##run tcp server
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -160,7 +192,7 @@ def run_servers():
     server.serve_forever()
 
 
-# In[6]:
+# In[17]:
 
 
 if __name__ == '__main__':
