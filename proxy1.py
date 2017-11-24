@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[12]:
-
-
 import BaseHTTPServer
 import os
 import socket
@@ -11,13 +5,9 @@ from threading import Thread
 import sys
 import pickle
 from bitarray import bitarray
-from lib import check_filter_list
+from lib import check_filter_list, fetch_proxy_list
 import time
 import requests
-
-
-# In[13]:
-
 
 def load_backup(filename):
     #print "loading summary cache from backup file: ",filename
@@ -25,14 +15,13 @@ def load_backup(filename):
          return pickle.load(save)
 
 
-# In[14]:
-
-
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         
     # Handle a GET request.
     def do_GET(self):
         global filter_dict
+        global without_sc_count
+        global with_sc_count
         try:
             sentflag = 0
             falsepositive = 0
@@ -44,6 +33,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             
             # It doesn't exist...i.e not in the localcache
             if not os.path.exists(full_path):
+                without_sc_count+ = len(fetch_proxy_list())-1
                 print "resource not found in local cache...\n"
                 print "checking summary caches...\n"
                 proxy_true_list = check_filter_list(filter_dict, cache_name)
@@ -58,6 +48,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             sentflag = 0
                             break
                         else:
+                            with_sc_count + = 1
                             sentflag = sentflag + self.request_proxy(proxy,cache_name)
                 
             # ...if the file exists in cache
@@ -68,7 +59,9 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # ...it's something we don't handle.
             else:
                 raise ServerException("Unknown object '{0}'".format(self.path))
-                
+            
+            print "without summary cache calls :", without_sc_count
+            print "with summary cache calls :", with_sc_count
         # Handle errors.
         except Exception as msg:
             self.handle_error(msg)
@@ -123,11 +116,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             print "content sent to client....\n"
             return 1
 
-
-# In[15]:
-
-
-# Run local tcp sever at port 9000
 def run_port(sock,filter_dict):
     global close_port
     print "listening to TCP connections on port 9000......\n"
@@ -160,12 +148,8 @@ def add_filter(connection, client_address):
     connection.close()
 
 
-# In[16]:
-
-
 ##method to run servers
-def run_servers():
-    
+def run_servers(): 
     global filter_dict
     global server
     global sock
@@ -192,13 +176,15 @@ def run_servers():
     server.serve_forever()
 
 
-# In[17]:
-
 
 if __name__ == '__main__':
     
     ##declare filter dictionary
     filter_dict =  {}
+    
+    ##initialize metrices
+    with_sc_count = 0
+    without_sc_count
     
     ##declare flag for closing port
     close_port = 0
@@ -222,4 +208,3 @@ if __name__ == '__main__':
         server.socket.close()
         print "http server terminated...\n"
         port_close()
-
