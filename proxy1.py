@@ -33,7 +33,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             
             # It doesn't exist...i.e not in the localcache
             if not os.path.exists(full_path):
-                without_sc_count+ = len(fetch_proxy_list())-1
+                without_sc_count += len(fetch_proxy_list())-1
                 print "resource not found in local cache...\n"
                 print "checking summary caches...\n"
                 proxy_true_list = check_filter_list(filter_dict, cache_name)
@@ -48,7 +48,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             sentflag = 0
                             break
                         else:
-                            with_sc_count + = 1
+                            with_sc_count += 1
                             sentflag = sentflag + self.request_proxy(proxy,cache_name)
                 
             # ...if the file exists in cache
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     
     ##initialize metrices
     with_sc_count = 0
-    without_sc_count
+    without_sc_count = 0
     
     ##declare flag for closing port
     close_port = 0
